@@ -21,6 +21,8 @@
 #ifndef __STM32F0xx_IT_H
 #define __STM32F0xx_IT_H
 
+#include "stm32f0xx_hal.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
