@@ -1,4 +1,5 @@
 #include "init.h"
+#include "math.h"
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
@@ -8,7 +9,7 @@ UART_HandleTypeDef huart1;
 GPIO_PinState ERROR_LED, HEARTBEAT_LED, STATUS_LED, PRECHARGE_EN, BLEED_EN, INPUT_EN, CELL_EN, DCH_OVRD;
 
 
-float raw[8];
+
 
 
 void init(void)
@@ -41,18 +42,53 @@ void update_DAC(int value)
   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, value);
 }
 
-float update_ADC(void)
+void update_ADC(void)
 {
+  uint32_t ADC_count[8], ADC_sample[8], ADC_voltage[8];
   int i,count = 0;
-  float voltage[8];
   for(i=0; i<8; i++)
   {
     HAL_ADC_Start(&hadc);
     HAL_ADC_PollForConversion(&hadc, 5);
-    raw[i] = HAL_ADC_GetValue(&hadc);
-    voltage[i] = (raw[i]*3.3)/4096;
+    ADC_count[i] = HAL_ADC_GetValue(&hadc);
   }
-  return voltage[1];
+
+  for (i=0; i<8; i++)
+  {
+    ADC_sample[i] += ADC_count[i];
+  }
+  count ++;
+
+  if (count > 100)
+  {
+    for(i=0; i,8; i++)
+    {
+      ADC_sample[i] =  ADC_sample[i]/count;
+      ADC_voltage[i] =  ADC_sample[i]*VREF/4096; 
+    }
+    count = 0;
+  
+  }
+
+  Analog_value[0]	 = (  VOLTAGE_CELL_MCU	* 	VCELL_GAIN	) 	+ 	VCELL_OFFSET;
+	Analog_value[2]	 = (  VOLTAGE_INPUT_MCU	* 	VIN_GAIN	  ) 	+ 	VIN_OFFSET;
+	Analog_value[4]	 = (  VOLTAGE_CAT_MCU		* 	VCAT_GAIN 	) 	+ 	VCAT_OFFSET;
+	Analog_value[5]	 = (  VOLTAGE_AN_MCU		* 	VAN_GAIN	  ) 	+ 	VAN_OFFSET;
+	Analog_value[3]	 = (  CURRENT_INPUT_MCU	* 	IIN_GAIN	  ) 	+ 	IIN_OFFSET;
+
+  if(startup)
+  
+  {
+    Analog_value[1]	 = (  CURRENT_CELL_MCU	* 	ICELL_GAIN_REF	) ;
+  }
+  else
+  {
+    Analog_value[1]	 = (ICELL_REF	-(CURRENT_CELL_MCU * ICELL_GAIN_REF))/100;
+    Analog_value[1]  = ( Analog_value[1]	* ICELL_GAIN ) + ICELL_OFFSET ;
+  }
+
+	Analog_value[6]		 = (1/((1/298.15)+((log((((VREF_TEMP-TEMP_CELL_MCU)*CONST_RES)/TEMP_CELL_MCU)/10000))/BETA)))-273.15;
+	Analog_value[9]	 = (1/((1/298.15)+((log((((VREF_TEMP-TEMP_DCH_FET_MCU)*CONST_RES)/TEMP_DCH_FET_MCU)/10000))/BETA)))-273.15;
   
 }
 
